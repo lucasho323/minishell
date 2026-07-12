@@ -19,24 +19,35 @@ int split(char *line, char *argv[]) {
 
 int main(void) {
     char line[256];
-    char *argv[MAXARGS];                     // ← 新增：切好的參數放這
+    char *argv[MAXARGS];
 
     while (1) {
         printf("mysh> ");
         if (fgets(line, sizeof(line), stdin) == NULL)
-            break;                           // Ctrl+D 會走到這裡
-        line[strcspn(line, "\n")] = '\0';    // 把結尾的換行去掉
+            break;
+        line[strcspn(line, "\n")] = '\0';
 
-        if (split(line, argv) == 0)          // ← 改：切字串，零段（空行）就跳過
+        if (split(line, argv) == 0)
             continue;
 
-        pid_t pid = fork();                  // 生分身
+        if (strcmp(argv[0], "cd") == 0) {        // 攔截:本尊自己做
+            if (argv[1] == NULL)
+                printf("cd: 缺少路徑\n");
+            else if (chdir(argv[1]) != 0)
+                perror("cd");
+            continue;                            // 不 fork,回去讀下一行
+        }
+
+        if (strcmp(argv[0], "exit") == 0)        // 攔截:本尊自己結束
+            break;
+
+        pid_t pid = fork();
         if (pid == 0) {
-            execvp(argv[0], argv);           // ← 改：程式名是 argv[0]，陣列是切好的
+            execvp(argv[0], argv);
             printf("找不到指令: %s\n", argv[0]);
             return 1;
         } else {
-            wait(NULL);                      // 本尊等分身
+            wait(NULL);
         }
     }
     return 0;
